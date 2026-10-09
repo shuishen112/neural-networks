@@ -1,0 +1,56 @@
+name: Execute notebooks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies (CPU-only PyTorch)
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+          pip install nbconvert ipykernel
+
+      - name: Notebooks are in sync with src/
+        run: python build.py --check
+
+      - name: Execute lectures and solutions
+        run: |
+          mkdir -p executed
+          failed=()
+          for nb in lectures/*.ipynb solutions/*.ipynb; do
+            echo "::group::$nb"
+            start=$(date +%s)
+            if jupyter nbconvert --to notebook --execute "$nb" \
+                 --ExecutePreprocessor.timeout=1200 \
+                 --output-dir executed/$(dirname "$nb"); then
+              echo "OK  $nb  ($(( $(date +%s) - start ))s)"
+            else
+              echo "::error file=$nb::execution failed"
+              failed+=("$nb")
+            fi
+            echo "::endgroup::"
+          done
+          if [ ${#failed[@]} -ne 0 ]; then
+            printf 'FAILED: %s\n' "${failed[@]}"
+            exit 1
+          fi
+
+      - name: Upload executed notebooks
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: executed-notebooks
+          path: executed/
