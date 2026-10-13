@@ -7,6 +7,9 @@ Every lecture lives in its own folder ``src/NN_topic/`` with two files:
 * ``exercises.py`` -> ``exercises/NN_topic_exercises.ipynb``  (student version)
                    -> ``solutions/NN_topic_solutions.ipynb``  (instructor version)
 
+The companion language-model track lives in ``src/lm/NN_name.py`` and is built
+to ``language_models/NN_name.ipynb`` (one notebook per lecture, no exercises).
+
 Sources use the "percent" cell format (the same one VS Code, Spyder and
 jupytext understand)::
 
@@ -31,6 +34,7 @@ Usage::
 
     python build.py                 # (re)build all notebooks
     python build.py --run 03        # run a source as a plain script (quick check)
+    python build.py --lm 03         # run the language-model notebook source for lecture 03
     python build.py --check         # fail if notebooks are out of date
 """
 from __future__ import annotations
@@ -187,7 +191,15 @@ def targets() -> dict[str, str]:
             rel_t = f"solutions/{name}_solutions.ipynb"
             out[rel_s] = write_nb(student, rel_s)
             out[rel_t] = write_nb(solution, rel_t)
+    for src in lm_sources():
+        rel = f"language_models/{src.stem}.ipynb"
+        out[rel] = write_nb(parse_cells(src.read_text()), rel)
     return out
+
+
+def lm_sources() -> list[Path]:
+    d = SRC / "lm"
+    return sorted(d.glob("[0-9][0-9]_*.py")) if d.exists() else []
 
 
 # --------------------------------------------------------------------------
@@ -223,24 +235,40 @@ def cmd_run(prefix: str, which: str) -> None:
         if f == "exercises.py":
             code = [keep_code_solution(c) for c in code]
         script = "import matplotlib\nmatplotlib.use('Agg')\n" + "\n\n".join(code)
-        with tempfile.TemporaryDirectory() as tmp:
-            p = Path(tmp) / "nb.py"
-            p.write_text(script)
-            print(f"== running {d.name}/{f}")
-            env = dict(os.environ, MPLBACKEND="Agg")
-            r = subprocess.run([sys.executable, str(p)], cwd=tmp, env=env)
-            if r.returncode:
-                sys.exit(r.returncode)
+        _run_script(script, f"{d.name}/{f}")
+
+
+def cmd_lm(prefix: str) -> None:
+    [src] = [s for s in lm_sources() if s.name.startswith(prefix)]
+    code = [s for k, s in parse_cells(src.read_text()) if k == "code"]
+    _run_script("import matplotlib\nmatplotlib.use('Agg')\n" + "\n\n".join(code), f"lm/{src.name}")
+
+
+def _run_script(script: str, label: str) -> None:
+    """Run code from inside a notebook folder so relative paths like ../data work."""
+    cwd = ROOT / "lectures"
+    cwd.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        p = Path(tmp) / "nb.py"
+        p.write_text(script)
+        print(f"== running {label}")
+        env = dict(os.environ, MPLBACKEND="Agg")
+        r = subprocess.run([sys.executable, str(p)], cwd=cwd, env=env)
+        if r.returncode:
+            sys.exit(r.returncode)
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--run", metavar="NN")
+    ap.add_argument("--lm", metavar="NN")
     ap.add_argument("--which", default="both", choices=["both", "lecture", "exercises"])
     a = ap.parse_args()
     if a.check:
         cmd_check()
+    elif a.lm:
+        cmd_lm(a.lm)
     elif a.run:
         cmd_run(a.run, a.which)
     else:
