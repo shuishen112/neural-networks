@@ -612,9 +612,9 @@ def train_gpt(model, steps, max_lr=MAX_LR, warmup=WARMUP, eval_every=100, seed=0
             v = nats_per_char(model, val_small, stride=model.block_size)
             hist["val"].append((step, v))
             if verbose:
-                tr = np.mean(hist["train"][-eval_every:]) if hist["train"] else float("nan")
+                tr = f"{np.mean(hist['train'][-eval_every:]):.3f}" if hist["train"] else "  —  "
                 print(f"step {step:5d}  lr {lr_at(max(step - 1, 0), max_lr, warmup, steps):.2e}  "
-                      f"train {tr:.3f} nats/token  val {v:.3f} nats/char  ({time.time() - t0:5.1f} s)")
+                      f"train {tr} nats/token  val {v:.3f} nats/char  ({time.time() - t0:5.1f} s)")
         if step == steps:
             break
         lr = lr_at(step, max_lr, warmup, steps)
@@ -653,9 +653,9 @@ print(f"full validation, sliding window (stride {BLOCK // 2}): {val_nll_gpt:.3f}
 
 # %% [markdown]
 # Compare with the char-LSTM of LM 7, which had about the same number of parameters (~215 k), the
-# same batch shape and the same number of steps, and printed its own `val NLL (nats/char)`. At this
-# tiny scale the two are typically in the same range — the LSTM even has the advantage of an
-# unbounded context. The Transformer's advantages show up with scale: every position is computed in
+# same batch shape and the same number of steps, and reached about 1.71 nats/char against roughly
+# 1.81 here. At this tiny scale and short budget the LSTM wins — it has the advantage of an
+# unbounded context, while the GPT sees at most 64 characters. The Transformer's advantages show up with scale: every position is computed in
 # parallel (no sequential loop over time), so it uses hardware far better, and attention can
 # fetch information from any earlier position without squeezing it through a fixed-size state.
 #

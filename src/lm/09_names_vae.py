@@ -380,9 +380,11 @@ print("\n(validation set; rec and -ELBO in nats per character incl. the end toke
 # * **KL/name** is the *rate*: how many nats the code carries about each name. The plain model is
 #   typically at (or very near) zero, with no active units and near-zero reconstruction accuracy.
 # * The fixes buy a non-trivial rate: the code now encodes several nats per name, a number of latent
-#   dimensions become active, and greedy decoding from $\boldsymbol\mu$ recovers a sizeable fraction of
-#   names exactly. Character dropout typically gives the largest KL, because a decoder that cannot
-#   trust its own history *needs* $\mathbf z$.
+#   dimensions become active, and greedy decoding from $\boldsymbol\mu$ starts to recover names
+#   exactly, though with a code of a few nats only a small fraction (a perfect code for a name needs
+#   roughly 10–15 nats). Free bits gives the largest KL here because it *guarantees* a minimum rate per
+#   dimension; character dropout works more indirectly — a decoder that cannot trust its own history
+#   needs $\mathbf z$ more — and its effect grows with longer training and higher dropout rates.
 # * **−ELBO/char** is the honest likelihood bound. Do not be surprised if the collapsed model is
 #   *as good or better* here: putting information in $\mathbf z$ costs exactly as many nats of KL as it
 #   saves in reconstruction at best, and an imperfect encoder usually loses a bit. **The ELBO does not reward

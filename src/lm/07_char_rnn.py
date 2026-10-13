@@ -320,8 +320,8 @@ def train(model, steps, lr=LR, clip=1.0, eval_every=100, sample_at=(), verbose=T
             v, _ = evaluate(model, val_small)
             hist["val"].append((step, v))
             if verbose:
-                tr = np.mean(hist["train"][-eval_every:]) if hist["train"] else float("nan")
-                print(f"step {step:5d}  train {tr:.3f}  val {v:.3f} nats/char  ({time.time() - t0:5.1f} s)")
+                tr = f"{np.mean(hist['train'][-eval_every:]):.3f}" if hist["train"] else "  —  "
+                print(f"step {step:5d}  train {tr}  val {v:.3f} nats/char  ({time.time() - t0:5.1f} s)")
         if step in sample_at:
             hist["samples"][step] = sample(model, "\n", 200, seed=1)
         if step == steps:
@@ -460,12 +460,19 @@ plt.tight_layout(); plt.show()
 
 # %% [markdown]
 # With equal hidden size the three cells differ in parameters (the GRU has 3 and the LSTM 4 weight
-# blocks per vanilla-RNN block) and in time per step. Typical outcome on this budget: the gated
-# cells clearly beat the vanilla RNN, and GRU and LSTM are close (the GRU often learns faster at the
-# very beginning, the LSTM catches up with more training). The vanilla RNN is not hopeless at
-# character level — most of what matters is within a few characters — but its gradient through
-# time vanishes (Lecture 7), so it struggles with anything that needs a longer memory.
-# A fairer comparison would equalise the *parameter count* or the *wall-clock time*; try it.
+# blocks per vanilla-RNN block) and in time per step. The ranking after 400 steps may surprise you:
+# in our run the GRU is ahead, and the LSTM is *behind* even the vanilla RNN. This is a statement
+# about **speed of learning**, not about capacity. The LSTM has the most parameters and a cell state
+# that starts out empty, so it needs more steps to get going; look at the training curve of
+# Section 4, where the same LSTM keeps improving to about 1.71 nats/char after 1500 steps. The
+# vanilla RNN is not hopeless at character level either — most of what matters is within a few
+# characters — but its gradient through time vanishes (Lecture 7), so it gains little from longer
+# memory and plateaus earlier.
+#
+# The lesson generalises to LLM research: **comparisons at a tiny budget can rank models in the
+# opposite order to comparisons at a large one.** A fair comparison fixes the budget that matters
+# (steps, parameters, wall-clock time or FLOPs) and checks more than one point. Try it: rerun the
+# comparison with 1500 steps, or with hidden sizes chosen to equalise the parameter count.
 #
 # ## 8. Generating text: temperature, top-$k$ and prompts
 #

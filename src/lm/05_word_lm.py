@@ -478,8 +478,10 @@ assert best_nll < math.log(V)          # far better than uniform guessing
 #   wisely rather than a substitute for the other regularisers.
 # * **Best** column. Here the differences are much smaller. With only 30 000
 #   training tokens the *data* is what limits the model; early stopping alone
-#   captures most of what can be had, and dropout and weight decay typically add a
-#   modest improvement on top, the combination doing best.
+#   captures most of what can be had, and dropout and weight decay add a modest
+#   improvement on top. In our run weight decay alone did best; the combinations,
+#   whose strengths were not re-tuned together, did not add up. Regularisers
+#   interact, and their strengths have to be tuned jointly.
 #
 # This is typical. Regularisation pays off most when we train longer, or use a
 # bigger model, than the data alone would support — dropout in particular slows
